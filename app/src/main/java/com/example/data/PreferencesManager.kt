@@ -34,8 +34,12 @@ class PreferencesManager(context: Context) {
     set(value) = prefs.edit().putBoolean(KEY_SHIELD_ENABLED, value).apply()
 
   var aiModel: String
-    get() = prefs.getString(KEY_AI_MODEL, "FLUX.1 Realism (Low Moderation)") ?: "FLUX.1 Realism (Low Moderation)"
+    get() = prefs.getString(KEY_AI_MODEL, "Google Imagen 3 (imagen-3.0-generate-002)") ?: "Google Imagen 3 (imagen-3.0-generate-002)"
     set(value) = prefs.edit().putString(KEY_AI_MODEL, value).apply()
+
+  var safetyTolerance: String
+    get() = prefs.getString("key_safety_tolerance", "low") ?: "low"
+    set(value) = prefs.edit().putString("key_safety_tolerance", value).apply()
 
   var lastSeed: Long
     get() = prefs.getLong(KEY_LAST_SEED, 424242L)

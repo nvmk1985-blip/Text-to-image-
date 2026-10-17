@@ -23,13 +23,17 @@ jobs:
           distribution: 'temurin'
           java-version: '21'
 
-      - name: Configure Android SDK & Accept Licenses
-        uses: android-actions/setup-android@v3
-
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '9.3.1'
+
+      - name: Configure Android SDK and Accept Licenses
+        run: |
+          mkdir -p "$ANDROID_HOME/licenses" || true
+          echo -e "24333f8a63b6825ea9c5514f83c2829b004d1fee\nd56f5187479451eabf01fb78af6dfcb131a6481e\n24333f8a63b6825ea9c5514f83c2829b004d1fee" > "$ANDROID_HOME/licenses/android-sdk-license" || true
+          echo -e "84831b9409646a918e30573bab4c9c91346d8abd" > "$ANDROID_HOME/licenses/android-sdk-preview-license" || true
+          yes | sdkmanager --licenses || true
 
       - name: Ensure Consistent Debug Keystore and Secrets
         run: |
@@ -60,8 +64,9 @@ jobs:
           body: |
             ## Text To Image Studio - Android APK Release
             - Automated Build for commit `${{ github.sha }}`
-            - Realistic Human Generation with FLUX.1 AI Engine
+            - Realistic Human Generation with Google Imagen 3 Engine
             - Master Control Directive & Anti-Deformity Negative Shield
+            - Batch Image Generation Queue with Variations
             - Fully customized 10 Filter Categories with Dynamic Option Adders
           files: release-artifacts/Text-To-Image.apk
         env:

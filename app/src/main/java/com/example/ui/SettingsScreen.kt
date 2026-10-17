@@ -598,9 +598,9 @@ fun SettingsScreen(
           Spacer(modifier = Modifier.height(12.dp))
 
           val models = listOf(
-            "FLUX.1 Realism (Low Moderation - Uncensored Creative)",
-            "Stable Diffusion XL Turbo (Fast Photoreal)",
-            "Google Imagen 3 (Cloud API)"
+            "Google Imagen 3 (imagen-3.0-generate-002)",
+            "Stable Diffusion RealVisXL (Ultra Photoreal)",
+            "SDXL Turbo (High Speed Photoreal)"
           )
 
           models.forEach { model ->
@@ -642,6 +642,55 @@ fun SettingsScreen(
                     modifier = Modifier.size(18.dp)
                   )
                 }
+              }
+            }
+          }
+
+          Spacer(modifier = Modifier.height(14.dp))
+
+          // Safety Tolerance Selector (safety_tolerance = low)
+          Text(
+            text = "Safety Control (safety_tolerance)",
+            fontSize = 13.sp,
+            fontWeight = FontWeight.Bold,
+            color = CyanBright
+          )
+          Text(
+            text = "தணிக்கை நிலை: Low (அதிகபட்ச படைப்பாற்றல் சுதந்திரம், தேவையற்ற Blocks இல்லை)",
+            fontSize = 11.sp,
+            color = TextMuted,
+            modifier = Modifier.padding(bottom = 6.dp)
+          )
+
+          Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+          ) {
+            listOf("Low (Active)", "Medium", "High").forEach { level ->
+              val isLow = level.startsWith("Low")
+              Box(
+                modifier = Modifier
+                  .weight(1f)
+                  .clip(RoundedCornerShape(8.dp))
+                  .background(if (isLow) CyanPrimary.copy(alpha = 0.2f) else CardElevated)
+                  .border(
+                    width = 1.dp,
+                    color = if (isLow) CyanBright else GlassCyanBorder.copy(alpha = 0.3f),
+                    shape = RoundedCornerShape(8.dp)
+                  )
+                  .clickable {
+                    prefsManager.safetyTolerance = if (isLow) "low" else level.lowercase()
+                    Toast.makeText(context, "Safety Tolerance: $level அமைக்கப்பட்டது!", Toast.LENGTH_SHORT).show()
+                  }
+                  .padding(vertical = 8.dp),
+                contentAlignment = Alignment.Center
+              ) {
+                Text(
+                  text = level,
+                  fontSize = 11.sp,
+                  fontWeight = if (isLow) FontWeight.Bold else FontWeight.Normal,
+                  color = if (isLow) CyanBright else TextSecondary
+                )
               }
             }
           }

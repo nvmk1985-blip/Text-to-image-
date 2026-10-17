@@ -41,6 +41,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -113,11 +114,19 @@ fun HomeScreen(
   // Generation state
   var currentSeed by remember { mutableLongStateOf(prefsManager.lastSeed) }
   var currentImageUrl by remember {
-    // Initial stunning realistic artwork URL
-    mutableStateOf("https://image.pollinations.ai/prompt/hyperrealistic%20portrait%20of%20a%20human%20face%20surrounded%20by%20delicate%20botanical%20tree%20branches%20and%20wildflowers%2C%208k%20resolution%2C%20soft%20golden%20sunlight%2C%20fine%20art%2C%20masterpiece?model=flux-realism&seed=424242&width=720&height=1280&nologo=true")
+    // Initial stunning realistic artwork URL (Zero watermarks)
+    mutableStateOf("https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=1080&q=80")
   }
   var isGenerating by remember { mutableStateOf(false) }
   var loadedBitmap by remember { mutableStateOf<Bitmap?>(null) }
+
+  // Batch Image Generation Queue State
+  var batchCount by remember { mutableIntStateOf(1) } // 1, 2, or 4
+  var batchProgress by remember { mutableStateOf("") }
+  var batchImages by remember {
+    mutableStateOf(listOf("https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=1080&q=80"))
+  }
+  var selectedBatchIndex by remember { mutableIntStateOf(0) }
 
   // Sheets and Dialogs visibility
   var showPresetsSheet by remember { mutableStateOf(false) }
@@ -137,50 +146,70 @@ fun HomeScreen(
 
   fun triggerGenerate() {
     isGenerating = true
-
-    // Handle Seed based on Face Mode
-    val effectiveSeed = when (currentFaceMode) {
-      FaceMode.OPTION_3_LOCKED -> {
-        // Lock to previous seed
-        prefsManager.lastSeed
-      }
-      FaceMode.OPTION_2_NEW -> {
-        // Brand new random seed
-        val newSeed = Random.nextLong(100000, 99999999)
-        prefsManager.lastSeed = newSeed
-        prefsManager.lockedFacePrompt = "${currentFilters.genderAge}, ${currentFilters.faceShape}, ${currentFilters.skinTone}"
-        newSeed
-      }
-      FaceMode.OPTION_1_UPLOAD -> {
-        Random.nextLong(100000, 99999999)
-      }
-    }
-    currentSeed = effectiveSeed
-
-    // Construct Fused Prompt: [Settings Control Prompt] + [Home Image Prompt] + [Preset Filters] + [Negative Deformity Shield]
-    val finalFusedPrompt = imageService.constructFinalPrompt(
-      controlPrompt = prefsManager.controlPrompt,
-      imagePrompt = promptInput,
-      presetFilters = currentFilters,
-      faceMode = currentFaceMode,
-      lockedFacePrompt = prefsManager.lockedFacePrompt,
-      negativePrompt = prefsManager.negativePrompt,
-      isShieldEnabled = prefsManager.isAntiDeformityShieldEnabled
-    )
-
-    val newUrl = imageService.generateImageUrl(
-      finalPrompt = finalFusedPrompt,
-      seed = effectiveSeed,
-      aspectRatio = currentFilters.aspectRatio
-    )
-
-    currentImageUrl = newUrl
-
     coroutineScope.launch {
-      val bitmap = imageService.downloadBitmap(newUrl)
+      val generatedUrls = mutableListOf<String>()
+      val total = batchCount
+
+      for (i in 1..total) {
+        batchProgress = if (total > 1) "படம் $i/$total தயாராகிறது..." else "Google Imagen 3 படம் தயாராகிறது..."
+
+        // Handle Seed based on Face Mode and batch variation index
+        val effectiveSeed = when (currentFaceMode) {
+          FaceMode.OPTION_3_LOCKED -> prefsManager.lastSeed + (i - 1) * 77
+          FaceMode.OPTION_2_NEW -> {
+            val newSeed = Random.nextLong(100000, 99999999)
+            if (i == 1) {
+              prefsManager.lastSeed = newSeed
+              prefsManager.lockedFacePrompt = "${currentFilters.genderAge}, ${currentFilters.faceShape}, ${currentFilters.skinTone}"
+            }
+            newSeed
+          }
+          FaceMode.OPTION_1_UPLOAD -> Random.nextLong(100000, 99999999)
+        }
+        currentSeed = effectiveSeed
+
+        // Subtle variation in lighting/camera per batch item while keeping identity
+        val variationPrompt = when (i) {
+          2 -> "$promptInput, slight head turn, golden hour lighting"
+          3 -> "$promptInput, soft studio rim lighting, cinematic close-up"
+          4 -> "$promptInput, ambient natural sunlight, confident gentle smile"
+          else -> promptInput
+        }
+
+        val finalFusedPrompt = imageService.constructFinalPrompt(
+          controlPrompt = prefsManager.controlPrompt,
+          imagePrompt = variationPrompt,
+          presetFilters = currentFilters,
+          faceMode = currentFaceMode,
+          lockedFacePrompt = prefsManager.lockedFacePrompt,
+          negativePrompt = prefsManager.negativePrompt,
+          isShieldEnabled = prefsManager.isAntiDeformityShieldEnabled,
+          safetyTolerance = prefsManager.safetyTolerance
+        )
+
+        val newUrl = imageService.generateImageUrl(
+          finalPrompt = finalFusedPrompt,
+          seed = effectiveSeed,
+          aspectRatio = currentFilters.aspectRatio,
+          modelName = prefsManager.aiModel,
+          safetyTolerance = prefsManager.safetyTolerance
+        )
+
+        generatedUrls.add(newUrl)
+        if (i == 1) {
+          currentImageUrl = newUrl
+        }
+      }
+
+      batchImages = generatedUrls
+      selectedBatchIndex = 0
+      currentImageUrl = generatedUrls.first()
+      val bitmap = imageService.downloadBitmap(currentImageUrl)
       loadedBitmap = bitmap
       isGenerating = false
-      Toast.makeText(context, "படம் தயாரானது (Generation Complete)!", Toast.LENGTH_SHORT).show()
+      batchProgress = ""
+      val msg = if (total > 1) "$total மாறுபட்ட படங்கள் வெற்றிகரமாக உருவாக்கப்பட்டன (Batch Complete)!" else "படம் தயாரானது (Generation Complete)!"
+      Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
     }
   }
 
@@ -306,6 +335,47 @@ fun HomeScreen(
             )
 
             Spacer(modifier = Modifier.height(10.dp))
+
+            // Batch Queue Variation Selector (1x, 2x, 4x)
+            Row(
+              modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 8.dp),
+              horizontalArrangement = Arrangement.SpaceBetween,
+              verticalAlignment = Alignment.CenterVertically
+            ) {
+              Text(
+                text = "Batch Queue:",
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Bold,
+                color = CyanBright
+              )
+
+              Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                listOf(1 to "1 படம்", 2 to "2 மாறுபாடுகள்", 4 to "4 மாறுபாடுகள்").forEach { (count, label) ->
+                  val isSelected = batchCount == count
+                  Box(
+                    modifier = Modifier
+                      .clip(RoundedCornerShape(8.dp))
+                      .background(if (isSelected) CyanPrimary.copy(alpha = 0.25f) else CardElevated)
+                      .border(
+                        width = 1.dp,
+                        color = if (isSelected) CyanBright else GlassCyanBorder.copy(alpha = 0.35f),
+                        shape = RoundedCornerShape(8.dp)
+                      )
+                      .clickable { batchCount = count }
+                      .padding(horizontal = 8.dp, vertical = 4.dp)
+                  ) {
+                    Text(
+                      text = label,
+                      fontSize = 10.sp,
+                      fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                      color = if (isSelected) CyanBright else TextSecondary
+                    )
+                  }
+                }
+              }
+            }
 
             // Glowing Royal Gold "Image Generate பண்ணு" Action Button (Matches Image 2!)
             Box(
@@ -463,13 +533,13 @@ fun HomeScreen(
               )
               Spacer(modifier = Modifier.height(12.dp))
               Text(
-                text = "FLUX AI படம் உருவாக்குகிறது...",
+                text = batchProgress.ifBlank { "Google Imagen 3 படம் உருவாக்குகிறது..." },
                 color = TextPrimary,
                 fontSize = 13.sp,
                 fontWeight = FontWeight.SemiBold
               )
               Text(
-                text = "Control + Image Prompt இரண்டும் படிக்கப்படுகின்றன",
+                text = "Safety Tolerance: Low | Zero Watermark | 8K DSLR",
                 color = CyanBright,
                 fontSize = 11.sp
               )
@@ -515,6 +585,117 @@ fun HomeScreen(
             tint = TextPrimary,
             modifier = Modifier.size(20.dp)
           )
+        }
+      }
+
+      // Batch Results Carousel & Save All (shown when batchImages has multiple variations)
+      if (batchImages.size > 1) {
+        Spacer(modifier = Modifier.height(14.dp))
+        Column(
+          modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .background(CardBg)
+            .border(1.dp, GlassCyanBorder.copy(alpha = 0.4f), RoundedCornerShape(16.dp))
+            .padding(12.dp)
+        ) {
+          Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+          ) {
+            Text(
+              text = "Batch Variations (${batchImages.size} படங்கள்):",
+              fontSize = 13.sp,
+              fontWeight = FontWeight.Bold,
+              color = GoldBright
+            )
+
+            // Save All Button
+            Box(
+              modifier = Modifier
+                .clip(RoundedCornerShape(14.dp))
+                .background(CyanPrimary)
+                .clickable {
+                  coroutineScope.launch {
+                    var successCount = 0
+                    batchImages.forEachIndexed { idx, url ->
+                      val bmp = imageService.downloadBitmap(url)
+                      if (bmp != null) {
+                        imageService.saveImageToGallery(bmp, "Batch_$idx")
+                        successCount++
+                      }
+                    }
+                    Toast.makeText(context, "$successCount படங்கள் கேலரியில் சேமிக்கப்பட்டன!", Toast.LENGTH_SHORT).show()
+                  }
+                }
+                .padding(horizontal = 10.dp, vertical = 5.dp)
+            ) {
+              Text(
+                text = "Save All to Gallery",
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color.Black
+              )
+            }
+          }
+
+          Spacer(modifier = Modifier.height(10.dp))
+
+          Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
+          ) {
+            batchImages.forEachIndexed { index, imgUrl ->
+              val isSelected = selectedBatchIndex == index
+              Box(
+                modifier = Modifier
+                  .weight(1f)
+                  .aspectRatio(1f)
+                  .clip(RoundedCornerShape(10.dp))
+                  .background(CardElevated)
+                  .border(
+                    width = if (isSelected) 2.dp else 1.dp,
+                    color = if (isSelected) GoldBright else GlassCyanBorder.copy(alpha = 0.3f),
+                    shape = RoundedCornerShape(10.dp)
+                  )
+                  .clickable {
+                    selectedBatchIndex = index
+                    currentImageUrl = imgUrl
+                    coroutineScope.launch {
+                      loadedBitmap = imageService.downloadBitmap(imgUrl)
+                    }
+                  }
+              ) {
+                AsyncImage(
+                  model = ImageRequest.Builder(context)
+                    .data(imgUrl)
+                    .crossfade(true)
+                    .build(),
+                  contentDescription = "Variation $index",
+                  contentScale = ContentScale.Crop,
+                  modifier = Modifier.fillMaxSize()
+                )
+                // Number Badge
+                Box(
+                  modifier = Modifier
+                    .align(Alignment.TopStart)
+                    .padding(4.dp)
+                    .size(18.dp)
+                    .clip(CircleShape)
+                    .background(if (isSelected) GoldPrimary else Color.Black.copy(alpha = 0.7f)),
+                  contentAlignment = Alignment.Center
+                ) {
+                  Text(
+                    text = "${index + 1}",
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = if (isSelected) Color.Black else Color.White
+                  )
+                }
+              }
+            }
+          }
         }
       }
 
