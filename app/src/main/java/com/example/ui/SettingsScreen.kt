@@ -648,49 +648,90 @@ fun SettingsScreen(
 
           Spacer(modifier = Modifier.height(14.dp))
 
-          // Safety Tolerance Selector (safety_tolerance = low)
-          Text(
-            text = "Safety Control (safety_tolerance)",
-            fontSize = 13.sp,
-            fontWeight = FontWeight.Bold,
-            color = CyanBright
-          )
-          Text(
-            text = "தணிக்கை நிலை: Low (அதிகபட்ச படைப்பாற்றல் சுதந்திரம், தேவையற்ற Blocks இல்லை)",
-            fontSize = 11.sp,
-            color = TextMuted,
-            modifier = Modifier.padding(bottom = 6.dp)
-          )
+          // Dedicated Safety Tolerance Toggle for Imagen 3
+          var currentTolerance by remember { mutableStateOf(prefsManager.safetyTolerance) }
 
-          Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
+          Column(
+            modifier = Modifier
+              .fillMaxWidth()
+              .clip(RoundedCornerShape(12.dp))
+              .background(CardElevated)
+              .padding(12.dp)
           ) {
-            listOf("Low (Active)", "Medium", "High").forEach { level ->
-              val isLow = level.startsWith("Low")
+            Row(
+              modifier = Modifier.fillMaxWidth(),
+              horizontalArrangement = Arrangement.SpaceBetween,
+              verticalAlignment = Alignment.CenterVertically
+            ) {
+              Column {
+                Text(
+                  text = "Safety Tolerance (Imagen 3)",
+                  fontSize = 13.sp,
+                  fontWeight = FontWeight.Bold,
+                  color = GoldBright
+                )
+                Text(
+                  text = "Low: Block Only High (அதிகபட்ச படைப்பாற்றல் சுதந்திரம்)",
+                  fontSize = 11.sp,
+                  color = TextMuted
+                )
+              }
+
+              // Active API Behavior Badge
               Box(
                 modifier = Modifier
-                  .weight(1f)
-                  .clip(RoundedCornerShape(8.dp))
-                  .background(if (isLow) CyanPrimary.copy(alpha = 0.2f) else CardElevated)
-                  .border(
-                    width = 1.dp,
-                    color = if (isLow) CyanBright else GlassCyanBorder.copy(alpha = 0.3f),
-                    shape = RoundedCornerShape(8.dp)
-                  )
-                  .clickable {
-                    prefsManager.safetyTolerance = if (isLow) "low" else level.lowercase()
-                    Toast.makeText(context, "Safety Tolerance: $level அமைக்கப்பட்டது!", Toast.LENGTH_SHORT).show()
-                  }
-                  .padding(vertical = 8.dp),
-                contentAlignment = Alignment.Center
+                  .clip(RoundedCornerShape(6.dp))
+                  .background(CyanPrimary.copy(alpha = 0.2f))
+                  .border(1.dp, CyanBright.copy(alpha = 0.5f), RoundedCornerShape(6.dp))
+                  .padding(horizontal = 6.dp, vertical = 2.dp)
               ) {
                 Text(
-                  text = level,
-                  fontSize = 11.sp,
-                  fontWeight = if (isLow) FontWeight.Bold else FontWeight.Normal,
-                  color = if (isLow) CyanBright else TextSecondary
+                  text = if (currentTolerance == "low") "Block Only High" else prefsManager.imagenSafetySetting,
+                  fontSize = 9.sp,
+                  fontWeight = FontWeight.Bold,
+                  color = CyanBright
                 )
+              }
+            }
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            Row(
+              modifier = Modifier.fillMaxWidth(),
+              horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+              listOf(
+                "low" to "Low (Block Only High)",
+                "medium" to "Medium",
+                "high" to "High"
+              ).forEach { (key, label) ->
+                val isSelected = currentTolerance == key
+                Box(
+                  modifier = Modifier
+                    .weight(if (key == "low") 1.4f else 1f)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(if (isSelected) GoldPrimary.copy(alpha = 0.25f) else CardBg)
+                    .border(
+                      width = if (isSelected) 1.5.dp else 1.dp,
+                      color = if (isSelected) GoldBright else GlassGoldBorder.copy(alpha = 0.3f),
+                      shape = RoundedCornerShape(8.dp)
+                    )
+                    .clickable {
+                      currentTolerance = key
+                      prefsManager.safetyTolerance = key
+                      val apiBehavior = if (key == "low") "Block Only High" else prefsManager.imagenSafetySetting
+                      Toast.makeText(context, "Safety Tolerance: $key ($apiBehavior) சேமிக்கப்பட்டது!", Toast.LENGTH_SHORT).show()
+                    }
+                    .padding(vertical = 8.dp, horizontal = 4.dp),
+                  contentAlignment = Alignment.Center
+                ) {
+                  Text(
+                    text = if (key == "low") "Low" else label,
+                    fontSize = 11.sp,
+                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                    color = if (isSelected) GoldBright else TextSecondary
+                  )
+                }
               }
             }
           }

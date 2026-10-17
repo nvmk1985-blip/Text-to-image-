@@ -41,6 +41,14 @@ class PreferencesManager(context: Context) {
     get() = prefs.getString("key_safety_tolerance", "low") ?: "low"
     set(value) = prefs.edit().putString("key_safety_tolerance", value).apply()
 
+  val imagenSafetySetting: String
+    get() = when (safetyTolerance.lowercase()) {
+      "low" -> "block_only_high"
+      "medium" -> "block_medium_and_above"
+      "high" -> "block_low_and_above"
+      else -> "block_only_high"
+    }
+
   var lastSeed: Long
     get() = prefs.getLong(KEY_LAST_SEED, 424242L)
     set(value) = prefs.edit().putLong(KEY_LAST_SEED, value).apply()

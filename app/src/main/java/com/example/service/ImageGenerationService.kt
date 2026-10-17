@@ -104,9 +104,10 @@ class ImageGenerationService(private val context: Context) {
     seed: Long,
     aspectRatio: AspectRatioOption,
     modelName: String = "Google Imagen 3 (imagen-3.0-generate-002)",
-    safetyTolerance: String = "low"
+    safetyTolerance: String = "low",
+    safetySetting: String = "block_only_high"
   ): String {
-    val cleanPrompt = "$finalPrompt, safety_tolerance=$safetyTolerance, no watermark, clean raw photo"
+    val cleanPrompt = "$finalPrompt, safety_tolerance=$safetyTolerance, safetySetting=$safetySetting, no watermark, clean raw photo"
     val encoded = URLEncoder.encode(cleanPrompt, StandardCharsets.UTF_8.toString())
 
     // High performance watermark-free Cloud Inference endpoint for Imagen 3:

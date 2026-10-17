@@ -192,7 +192,8 @@ fun HomeScreen(
           seed = effectiveSeed,
           aspectRatio = currentFilters.aspectRatio,
           modelName = prefsManager.aiModel,
-          safetyTolerance = prefsManager.safetyTolerance
+          safetyTolerance = prefsManager.safetyTolerance,
+          safetySetting = prefsManager.imagenSafetySetting
         )
 
         generatedUrls.add(newUrl)
