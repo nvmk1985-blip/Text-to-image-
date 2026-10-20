@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -141,10 +142,10 @@ fun RealisticPresetsSheet(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
           ) {
-            Column {
+            Column(modifier = Modifier.weight(1f).padding(end = 8.dp)) {
               Text(
                 text = "Realistic Human Preset Filters",
-                fontSize = 20.sp,
+                fontSize = 19.sp,
                 fontWeight = FontWeight.Bold,
                 fontFamily = PlayfairFontFamily,
                 color = GoldBright
@@ -156,20 +157,32 @@ fun RealisticPresetsSheet(
               )
             }
 
-            IconButton(
-              onClick = onDismiss,
+            // High-contrast, prominent Close button (Issue 1 fix)
+            Box(
               modifier = Modifier
-                .size(36.dp)
-                .clip(CircleShape)
+                .height(34.dp)
+                .clip(RoundedCornerShape(17.dp))
                 .background(CardElevated)
-                .border(1.dp, GlassCyanBorder, CircleShape)
+                .border(1.5.dp, GoldBright, RoundedCornerShape(17.dp))
+                .clickable { onDismiss() }
+                .padding(horizontal = 10.dp),
+              contentAlignment = Alignment.Center
             ) {
-              Icon(
-                imageVector = Icons.Default.Close,
-                contentDescription = "Close",
-                tint = CyanBright,
-                modifier = Modifier.size(20.dp)
-              )
+              Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                  imageVector = Icons.Default.Close,
+                  contentDescription = "Close Sheet",
+                  tint = GoldBright,
+                  modifier = Modifier.size(16.dp)
+                )
+                Spacer(modifier = Modifier.width(4.dp))
+                Text(
+                  text = "Close",
+                  fontSize = 12.sp,
+                  fontWeight = FontWeight.Bold,
+                  color = GoldBright
+                )
+              }
             }
           }
 
@@ -431,22 +444,25 @@ fun RealisticPresetsSheet(
             }
           }
 
-          // Bottom Action Buttons (Golden Glow button)
+          // Bottom Action Buttons with navigationBarsPadding so mobile navigation bar doesn't overlap (Issue 3 fix)
           Row(
             modifier = Modifier
               .fillMaxWidth()
-              .padding(top = 8.dp, bottom = 12.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
+              .navigationBarsPadding()
+              .padding(top = 10.dp, bottom = 16.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.CenterVertically
           ) {
             OutlinedButton(
               onClick = { tempFilters = PresetFilters() },
-              modifier = Modifier.weight(1f),
+              modifier = Modifier.weight(1f).height(48.dp),
               colors = ButtonDefaults.outlinedButtonColors(contentColor = GoldPrimary),
-              border = androidx.compose.foundation.BorderStroke(1.dp, GoldBorder.copy(alpha = 0.6f))
+              border = androidx.compose.foundation.BorderStroke(1.dp, GoldBorder.copy(alpha = 0.6f)),
+              shape = RoundedCornerShape(12.dp)
             ) {
-              Icon(Icons.Default.RestartAlt, contentDescription = null, modifier = Modifier.size(16.dp))
-              Spacer(modifier = Modifier.width(4.dp))
-              Text("Reset", fontSize = 14.sp)
+              Icon(Icons.Default.RestartAlt, contentDescription = null, modifier = Modifier.size(18.dp))
+              Spacer(modifier = Modifier.width(6.dp))
+              Text("Reset", fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
             }
 
             Button(
@@ -454,14 +470,15 @@ fun RealisticPresetsSheet(
                 onApplyFilters(tempFilters)
                 onDismiss()
               },
-              modifier = Modifier.weight(1.5f),
+              modifier = Modifier.weight(1.5f).height(48.dp),
               colors = ButtonDefaults.buttonColors(
                 containerColor = GoldPrimary,
                 contentColor = TextOnGold
-              )
+              ),
+              shape = RoundedCornerShape(12.dp)
             ) {
-              Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(16.dp))
-              Spacer(modifier = Modifier.width(4.dp))
+              Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(18.dp))
+              Spacer(modifier = Modifier.width(6.dp))
               Text("Apply Filters", fontWeight = FontWeight.Bold, fontSize = 14.sp)
             }
           }
@@ -617,16 +634,19 @@ private fun FilterCategoryWithAddSection(
         text = title,
         fontSize = 14.sp,
         fontWeight = FontWeight.Bold,
-        color = GoldBright
+        color = GoldBright,
+        modifier = Modifier
+          .weight(1f)
+          .padding(end = 8.dp)
       )
 
-      // '+' button to add custom option
+      // '+' button to add custom option (Issue 2 fix - guaranteed visible on right)
       Box(
         modifier = Modifier
-          .size(28.dp)
+          .size(30.dp)
           .clip(CircleShape)
           .background(CardElevated)
-          .border(1.dp, CyanPrimary, CircleShape)
+          .border(1.5.dp, CyanBright, CircleShape)
           .clickable(onClick = onAddClick),
         contentAlignment = Alignment.Center
       ) {

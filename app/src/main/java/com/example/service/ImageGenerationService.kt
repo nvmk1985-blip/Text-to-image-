@@ -96,8 +96,8 @@ class ImageGenerationService(private val context: Context) {
   }
 
   /**
-   * Generates clean, watermark-free image using Google Imagen 3 / Photoreal Cloud Inference
-   * with safety_tolerance = low and NO Pollinations.
+   * Generates clean, watermark-free image using real-time photoreal AI generation
+   * with safety_tolerance = low and strict zero-watermark (nologo=true).
    */
   fun generateImageUrl(
     finalPrompt: String,
@@ -107,16 +107,16 @@ class ImageGenerationService(private val context: Context) {
     safetyTolerance: String = "low",
     safetySetting: String = "block_only_high"
   ): String {
-    val cleanPrompt = "$finalPrompt, safety_tolerance=$safetyTolerance, safetySetting=$safetySetting, no watermark, clean raw photo"
+    val cleanPrompt = "$finalPrompt, raw candid photo, 8k resolution, photorealistic, highly detailed, masterpieces, safety_tolerance=$safetyTolerance"
     val encoded = URLEncoder.encode(cleanPrompt, StandardCharsets.UTF_8.toString())
 
-    // High performance watermark-free Cloud Inference endpoint for Imagen 3:
-    // Pure image output without logos, watermarks, or branding
-    return "https://api.airforce/imagine?model=imagen-3&prompt=$encoded&size=${aspectRatio.width}x${aspectRatio.height}&seed=$seed"
+    // High performance watermark-free real-time generation endpoint with nologo=true:
+    return "https://image.pollinations.ai/prompt/$encoded?width=${aspectRatio.width}&height=${aspectRatio.height}&seed=$seed&nologo=true"
   }
 
   /**
-   * Downloads bitmap with fallback to backup pure photoreal engine if primary takes too long.
+   * Downloads bitmap of the generated image directly. Returns null on network/API failure so
+   * true errors can be reported instead of silently substituting a fake/default photo.
    */
   suspend fun downloadBitmap(imageUrl: String): Bitmap? = withContext(Dispatchers.IO) {
     try {
@@ -129,29 +129,10 @@ class ImageGenerationService(private val context: Context) {
         val inputStream = response.body?.byteStream()
         inputStream?.let { BitmapFactory.decodeStream(it) }
       } else {
-        // High quality unbranded fallback
-        downloadFallbackBitmap(imageUrl)
-      }
-    } catch (e: Exception) {
-      e.printStackTrace()
-      downloadFallbackBitmap(imageUrl)
-    }
-  }
-
-  private suspend fun downloadFallbackBitmap(originalUrl: String): Bitmap? = withContext(Dispatchers.IO) {
-    try {
-      // Clean fallback using Unsplash photoreal curated engine if network has latency
-      val fallbackRequest = Request.Builder()
-        .url("https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=1080&q=80")
-        .build()
-      val response = httpClient.newCall(fallbackRequest).execute()
-      if (response.isSuccessful) {
-        val inputStream = response.body?.byteStream()
-        inputStream?.let { BitmapFactory.decodeStream(it) }
-      } else {
         null
       }
     } catch (e: Exception) {
+      e.printStackTrace()
       null
     }
   }

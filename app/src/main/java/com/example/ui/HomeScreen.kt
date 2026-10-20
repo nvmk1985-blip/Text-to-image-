@@ -209,8 +209,12 @@ fun HomeScreen(
       loadedBitmap = bitmap
       isGenerating = false
       batchProgress = ""
-      val msg = if (total > 1) "$total மாறுபட்ட படங்கள் வெற்றிகரமாக உருவாக்கப்பட்டன (Batch Complete)!" else "படம் தயாரானது (Generation Complete)!"
-      Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
+      if (bitmap != null) {
+        val msg = if (total > 1) "$total மாறுபட்ட படங்கள் வெற்றிகரமாக உருவாக்கப்பட்டன (Batch Complete)!" else "படம் தயாரானது (Generation Complete)!"
+        Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
+      } else {
+        Toast.makeText(context, "படம் உருவாக்குவதில் பிழை ஏற்பட்டது. தயவுசெய்து இணைய இணைப்பைச் சரிபார்த்து மீண்டும் முயற்சிக்கவும்.", Toast.LENGTH_LONG).show()
+      }
     }
   }
 

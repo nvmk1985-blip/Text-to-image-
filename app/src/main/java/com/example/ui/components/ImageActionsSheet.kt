@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -99,6 +100,7 @@ fun ImageActionsSheet(
             shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
           )
           .padding(horizontal = 20.dp, vertical = 16.dp)
+          .navigationBarsPadding()
       ) {
         Column(modifier = Modifier.fillMaxWidth()) {
           // Header
@@ -107,10 +109,10 @@ fun ImageActionsSheet(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
           ) {
-            Column {
+            Column(modifier = Modifier.weight(1f).padding(end = 8.dp)) {
               Text(
                 text = "Image Actions & Face Options",
-                fontSize = 20.sp,
+                fontSize = 19.sp,
                 fontWeight = FontWeight.Bold,
                 fontFamily = PlayfairFontFamily,
                 color = CyanBright
@@ -122,20 +124,31 @@ fun ImageActionsSheet(
               )
             }
 
-            IconButton(
-              onClick = onDismiss,
+            Box(
               modifier = Modifier
-                .size(36.dp)
-                .clip(CircleShape)
+                .height(34.dp)
+                .clip(RoundedCornerShape(17.dp))
                 .background(CardElevated)
-                .border(1.dp, GlassCyanBorder, CircleShape)
+                .border(1.5.dp, CyanBright, RoundedCornerShape(17.dp))
+                .clickable { onDismiss() }
+                .padding(horizontal = 10.dp),
+              contentAlignment = Alignment.Center
             ) {
-              Icon(
-                imageVector = Icons.Default.Close,
-                contentDescription = "Close",
-                tint = CyanBright,
-                modifier = Modifier.size(20.dp)
-              )
+              Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                  imageVector = Icons.Default.Close,
+                  contentDescription = "Close Sheet",
+                  tint = CyanBright,
+                  modifier = Modifier.size(16.dp)
+                )
+                Spacer(modifier = Modifier.width(4.dp))
+                Text(
+                  text = "Close",
+                  fontSize = 12.sp,
+                  fontWeight = FontWeight.Bold,
+                  color = CyanBright
+                )
+              }
             }
           }
 
