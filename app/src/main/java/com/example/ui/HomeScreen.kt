@@ -6,6 +6,7 @@ import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -53,6 +54,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -243,7 +245,7 @@ fun HomeScreen(
             color = GoldBright
           )
           Text(
-            text = "Realistic Human AI Studio",
+            text = "Realistic Human AI Studio • v1.1",
             fontSize = 11.sp,
             fontFamily = PlayfairFontFamily,
             color = CyanBright
@@ -511,16 +513,25 @@ fun HomeScreen(
           .border(1.5.dp, GlassCyanBorder.copy(alpha = 0.6f), RoundedCornerShape(16.dp))
           .clickable { showFullscreenZoom = true }
       ) {
-        // Image itself
-        AsyncImage(
-          model = ImageRequest.Builder(context)
-            .data(currentImageUrl)
-            .crossfade(true)
-            .build(),
-          contentDescription = "Generated Output Image",
-          contentScale = ContentScale.Crop,
-          modifier = Modifier.fillMaxSize()
-        )
+        // Image itself: prioritize loadedBitmap directly from memory (zero network delay / zero blank screen)
+        if (loadedBitmap != null) {
+          Image(
+            bitmap = loadedBitmap!!.asImageBitmap(),
+            contentDescription = "Generated Output Image",
+            contentScale = ContentScale.Crop,
+            modifier = Modifier.fillMaxSize()
+          )
+        } else {
+          AsyncImage(
+            model = ImageRequest.Builder(context)
+              .data(currentImageUrl)
+              .crossfade(true)
+              .build(),
+            contentDescription = "Output Image Preview",
+            contentScale = ContentScale.Crop,
+            modifier = Modifier.fillMaxSize()
+          )
+        }
 
         // Loading Overlay
         if (isGenerating) {
@@ -745,7 +756,7 @@ fun HomeScreen(
       },
       onSaveToGallery = {
         coroutineScope.launch {
-          val bitmap = loadedBitmap ?: imageService.downloadBitmap(currentImageUrl)
+          val bitmap = loadedBitmap
           if (bitmap != null) {
             val result = imageService.saveImageToGallery(bitmap, "AI Human")
             if (result.isSuccess) {
@@ -754,17 +765,17 @@ fun HomeScreen(
               Toast.makeText(context, "சேமிப்பதில் பிழை: ${result.exceptionOrNull()?.message}", Toast.LENGTH_SHORT).show()
             }
           } else {
-            Toast.makeText(context, "படத்தைப் பதிவிறக்க முடியவில்லை, மீண்டும் முயற்சிக்கவும்.", Toast.LENGTH_SHORT).show()
+            Toast.makeText(context, "முதலில் 'Image Generate பண்ணு' மூலம் புதிய படத்தை உருவாக்கவும்.", Toast.LENGTH_LONG).show()
           }
         }
       },
       onShareImage = {
         coroutineScope.launch {
-          val bitmap = loadedBitmap ?: imageService.downloadBitmap(currentImageUrl)
+          val bitmap = loadedBitmap
           if (bitmap != null) {
             imageService.shareImage(bitmap)
           } else {
-            Toast.makeText(context, "பகிர முடியவில்லை, படம் தயாராகவில்லை.", Toast.LENGTH_SHORT).show()
+            Toast.makeText(context, "முதலில் 'Image Generate பண்ணு' மூலம் புதிய படத்தை உருவாக்கவும்.", Toast.LENGTH_SHORT).show()
           }
         }
       },
@@ -783,19 +794,22 @@ fun HomeScreen(
   if (showFullscreenZoom) {
     FullscreenImageViewer(
       imageUrl = currentImageUrl,
+      bitmap = loadedBitmap,
       onDismiss = { showFullscreenZoom = false },
       onSave = {
         coroutineScope.launch {
-          val bitmap = loadedBitmap ?: imageService.downloadBitmap(currentImageUrl)
+          val bitmap = loadedBitmap
           if (bitmap != null) {
             val res = imageService.saveImageToGallery(bitmap, "AI Human")
             Toast.makeText(context, res.getOrNull() ?: "கேலரியில் சேமிக்கப்பட்டது!", Toast.LENGTH_SHORT).show()
+          } else {
+            Toast.makeText(context, "முதலில் 'Image Generate பண்ணு' மூலம் புதிய படத்தை உருவாக்கவும்.", Toast.LENGTH_SHORT).show()
           }
         }
       },
       onShare = {
         coroutineScope.launch {
-          val bitmap = loadedBitmap ?: imageService.downloadBitmap(currentImageUrl)
+          val bitmap = loadedBitmap
           if (bitmap != null) {
             imageService.shareImage(bitmap)
           }

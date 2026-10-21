@@ -15,9 +15,12 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AddPhotoAlternate
 import androidx.compose.material.icons.filled.Close
@@ -78,33 +81,26 @@ fun ImageActionsSheet(
     Box(
       modifier = Modifier
         .fillMaxSize()
-        .background(Color.Black.copy(alpha = 0.85f)),
-      contentAlignment = Alignment.BottomCenter
-    ) {
-      Box(
-        modifier = Modifier
-          .fillMaxWidth()
-          .clip(RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp))
-          .background(
-            Brush.verticalGradient(
-              listOf(
-                Color(0xFF0F171B),
-                Color(0xFF080C0E),
-                Color(0xFF040608)
-              )
+        .background(
+          Brush.verticalGradient(
+            listOf(
+              Color(0xFF0F171B),
+              Color(0xFF080C0E),
+              Color(0xFF040608)
             )
           )
-          .border(
-            width = 1.5.dp,
-            brush = Brush.verticalGradient(listOf(CyanPrimary, GoldPrimary, CyanBorder)),
-            shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
-          )
-          .padding(horizontal = 20.dp, vertical = 16.dp)
-          .navigationBarsPadding()
+        )
+        .statusBarsPadding()
+        .navigationBarsPadding()
+        .padding(horizontal = 20.dp, vertical = 12.dp)
+    ) {
+      Column(
+        modifier = Modifier
+          .fillMaxSize()
+          .verticalScroll(rememberScrollState())
       ) {
-        Column(modifier = Modifier.fillMaxWidth()) {
-          // Header
-          Row(
+        // Header
+        Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
@@ -262,7 +258,6 @@ fun ImageActionsSheet(
       }
     }
   }
-}
 
 @Composable
 private fun FaceOptionCard(

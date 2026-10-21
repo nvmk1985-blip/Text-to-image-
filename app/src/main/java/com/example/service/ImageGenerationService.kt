@@ -55,43 +55,36 @@ class ImageGenerationService(private val context: Context) {
     return buildString {
       // 1. Master Control Directive from Settings
       if (controlPrompt.isNotBlank()) {
-        append("Direct Master Concept: ${controlPrompt.trim()}. ")
+        append("Direct Concept: ${controlPrompt.trim()}. ")
       }
 
       // 2. Scene / Subject prompt entered in Home Box
       if (imagePrompt.isNotBlank()) {
-        append("Scene Subject: ${imagePrompt.trim()}. ")
+        append("Scene: ${imagePrompt.trim()}. ")
       }
 
       // 3. Face Mode handling
       when (faceMode) {
         FaceMode.OPTION_3_LOCKED -> {
           if (lockedFacePrompt.isNotBlank()) {
-            append("Consistent Facial Identity: $lockedFacePrompt. ")
+            append("Consistent Face Identity: $lockedFacePrompt. ")
           }
-          append("Ensure exact same face identity and bone structure as reference. ")
         }
         FaceMode.OPTION_1_UPLOAD -> {
-          append("Base the human facial features, eyes, and skin tone accurately on the user reference. ")
+          append("Realistic human portrait matching reference features. ")
         }
         FaceMode.OPTION_2_NEW -> {
-          append("Generate a completely unique and original human face structure. ")
+          append("Original unique human portrait. ")
         }
       }
 
       // 4. Preset Filters
-      append("Physical Attributes: $filterKeywords. ")
+      append("Attributes: $filterKeywords. ")
 
-      // 5. Anatomical Perfection & Hand/Face Guarantees
+      // 5. Anatomical Perfection Guarantees
       if (isShieldEnabled) {
-        append("Flawless human anatomy: perfectly aligned symmetrical mouth and natural teeth, strictly two arms and two legs, authentic hands with exactly 5 slender natural fingers and detailed nails, sharp focused gaze, authentic micro skin pores, zero plastic smoothing, zero airbrush. ")
-        if (negativePrompt.isNotBlank()) {
-          append("Negative constraints (exclude completely): ${negativePrompt.trim()}, watermark, logo, text, branding. ")
-        }
+        append("Perfect symmetrical mouth and natural teeth, 5 natural fingers, authentic skin pores, zero plastic smoothing. ")
       }
-
-      // 6. Imagen 3 Photography Benchmark
-      append("Studio portrait photography, 85mm f/1.4 lens, natural rim lighting, 8k resolution, authentic RAW photo, photorealistic, masterpiece.")
     }
   }
 
@@ -107,9 +100,7 @@ class ImageGenerationService(private val context: Context) {
     safetyTolerance: String = "low",
     safetySetting: String = "block_only_high"
   ): String {
-    val cleanPrompt = "$finalPrompt, raw candid photo, 8k resolution, photorealistic, highly detailed, masterpieces, safety_tolerance=$safetyTolerance"
-    val encoded = URLEncoder.encode(cleanPrompt, StandardCharsets.UTF_8.toString())
-
+    val encoded = URLEncoder.encode(finalPrompt.trim(), StandardCharsets.UTF_8.toString())
     // High performance watermark-free real-time generation endpoint with nologo=true:
     return "https://image.pollinations.ai/prompt/$encoded?width=${aspectRatio.width}&height=${aspectRatio.height}&seed=$seed&nologo=true"
   }

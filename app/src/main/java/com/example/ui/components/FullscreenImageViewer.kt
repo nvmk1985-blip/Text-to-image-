@@ -1,5 +1,7 @@
 package com.example.ui.components
 
+import android.graphics.Bitmap
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.rememberTransformableState
 import androidx.compose.foundation.gestures.transformable
@@ -7,6 +9,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
@@ -38,6 +41,7 @@ import com.example.ui.theme.TextPrimary
 @Composable
 fun FullscreenImageViewer(
   imageUrl: String,
+  bitmap: Bitmap? = null,
   onDismiss: () -> Unit,
   onSave: () -> Unit,
   onShare: () -> Unit
@@ -70,19 +74,35 @@ fun FullscreenImageViewer(
           .transformable(state = state),
         contentAlignment = Alignment.Center
       ) {
-        AsyncImage(
-          model = imageUrl,
-          contentDescription = "Zoomed AI Image",
-          contentScale = ContentScale.Fit,
-          modifier = Modifier
-            .fillMaxSize()
-            .graphicsLayer(
-              scaleX = scale,
-              scaleY = scale,
-              translationX = offset.x,
-              translationY = offset.y
-            )
-        )
+        if (bitmap != null) {
+          Image(
+            bitmap = bitmap.asImageBitmap(),
+            contentDescription = "Zoomed AI Image",
+            contentScale = ContentScale.Fit,
+            modifier = Modifier
+              .fillMaxSize()
+              .graphicsLayer(
+                scaleX = scale,
+                scaleY = scale,
+                translationX = offset.x,
+                translationY = offset.y
+              )
+          )
+        } else {
+          AsyncImage(
+            model = imageUrl,
+            contentDescription = "Zoomed AI Image",
+            contentScale = ContentScale.Fit,
+            modifier = Modifier
+              .fillMaxSize()
+              .graphicsLayer(
+                scaleX = scale,
+                scaleY = scale,
+                translationX = offset.x,
+                translationY = offset.y
+              )
+          )
+        }
       }
 
       // Top Close Button
