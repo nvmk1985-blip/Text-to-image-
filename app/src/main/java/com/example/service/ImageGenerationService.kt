@@ -89,42 +89,71 @@ class ImageGenerationService(private val context: Context) {
   }
 
   /**
-   * Generates clean, watermark-free image using real-time photoreal AI generation
-   * with safety_tolerance = low and strict zero-watermark (nologo=true).
+   * Generates clean, zero-watermark, authentic 8K photorealistic human portraits
+   * using Google's official Imagen 3 (imagen-3.0-generate-002) model directly.
    */
-  fun generateImageUrl(
+  suspend fun generateHumanImage(
     finalPrompt: String,
-    seed: Long,
     aspectRatio: AspectRatioOption,
-    modelName: String = "Google Imagen 3 (imagen-3.0-generate-002)",
-    safetyTolerance: String = "low",
+    apiKey: String,
     safetySetting: String = "block_only_high"
-  ): String {
-    val encoded = URLEncoder.encode(finalPrompt.trim(), StandardCharsets.UTF_8.toString())
-    // High performance watermark-free real-time generation endpoint with nologo=true:
-    return "https://image.pollinations.ai/prompt/$encoded?width=${aspectRatio.width}&height=${aspectRatio.height}&seed=$seed&nologo=true"
-  }
+  ): Result<Bitmap> = withContext(Dispatchers.IO) {
+    val cleanKey = apiKey.trim()
+    if (cleanKey.isBlank()) {
+      return@withContext Result.failure(IllegalStateException("NO_API_KEY"))
+    }
 
-  /**
-   * Downloads bitmap of the generated image directly. Returns null on network/API failure so
-   * true errors can be reported instead of silently substituting a fake/default photo.
-   */
-  suspend fun downloadBitmap(imageUrl: String): Bitmap? = withContext(Dispatchers.IO) {
     try {
+      val url = "https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-002:predict?key=$cleanKey"
+
+      val payload = JSONObject().apply {
+        put("instances", JSONArray().apply {
+          put(JSONObject().apply {
+            put("prompt", finalPrompt)
+          })
+        })
+        put("parameters", JSONObject().apply {
+          put("sampleCount", 1)
+          put("aspectRatio", aspectRatio.apiRatio)
+          put("safetySetting", safetySetting)
+          put("personGeneration", "ALLOW_ADULT")
+        })
+      }
+
+      val body = payload.toString().toRequestBody("application/json".toMediaType())
       val request = Request.Builder()
-        .url(imageUrl)
-        .header("User-Agent", "Mozilla/5.0 (Android; Mobile; rv:128.0) Gecko/128.0 Firefox/128.0")
+        .url(url)
+        .post(body)
         .build()
+
       val response = httpClient.newCall(request).execute()
+      val responseText = response.body?.string() ?: ""
+
       if (response.isSuccessful) {
-        val inputStream = response.body?.byteStream()
-        inputStream?.let { BitmapFactory.decodeStream(it) }
+        val root = JSONObject(responseText)
+        val predictions = root.optJSONArray("predictions")
+        if (predictions != null && predictions.length() > 0) {
+          val b64 = predictions.getJSONObject(0).optString("bytesBase64Encoded")
+          if (b64.isNotBlank()) {
+            val bytes = android.util.Base64.decode(b64, android.util.Base64.DEFAULT)
+            val bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
+            if (bitmap != null) {
+              return@withContext Result.success(bitmap)
+            }
+          }
+        }
+        Result.failure(Exception("படத் தரவு கிடைக்கவில்லை (No image data in response)"))
       } else {
-        null
+        val errorMsg = try {
+          val errObj = JSONObject(responseText).optJSONObject("error")
+          errObj?.optString("message") ?: "API Error (${response.code})"
+        } catch (e: Exception) {
+          "API Error HTTP ${response.code}"
+        }
+        Result.failure(Exception(errorMsg))
       }
     } catch (e: Exception) {
-      e.printStackTrace()
-      null
+      Result.failure(e)
     }
   }
 

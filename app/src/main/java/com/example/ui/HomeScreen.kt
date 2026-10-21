@@ -31,15 +31,23 @@ import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.GridView
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.window.Dialog
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import com.example.ui.theme.TextOnGold
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -125,6 +133,7 @@ fun HomeScreen(
   // Batch Image Generation Queue State
   var batchCount by remember { mutableIntStateOf(1) } // 1, 2, or 4
   var batchProgress by remember { mutableStateOf("") }
+  var batchBitmaps by remember { mutableStateOf<List<Bitmap>>(emptyList()) }
   var batchImages by remember {
     mutableStateOf(listOf("https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=1080&q=80"))
   }
@@ -134,6 +143,7 @@ fun HomeScreen(
   var showPresetsSheet by remember { mutableStateOf(false) }
   var showActionsSheet by remember { mutableStateOf(false) }
   var showFullscreenZoom by remember { mutableStateOf(false) }
+  var showApiKeyDialog by remember { mutableStateOf(false) }
 
   // Zero-permission Photo Picker for Option 1: Face Image Upload
   val photoPickerLauncher = rememberLauncherForActivityResult(
@@ -147,13 +157,19 @@ fun HomeScreen(
   }
 
   fun triggerGenerate() {
+    val apiKey = prefsManager.googleApiKey.trim()
+    if (apiKey.isBlank()) {
+      showApiKeyDialog = true
+      return
+    }
+
     isGenerating = true
     coroutineScope.launch {
-      val generatedUrls = mutableListOf<String>()
+      val generatedBitmaps = mutableListOf<Bitmap>()
       val total = batchCount
 
       for (i in 1..total) {
-        batchProgress = if (total > 1) "படம் $i/$total தயாராகிறது..." else "Google Imagen 3 படம் தயாராகிறது..."
+        batchProgress = if (total > 1) "படம் $i/$total தயாராகிறது (Google Imagen 3)..." else "Google Imagen 3 படம் தயாராகிறது..."
 
         // Handle Seed based on Face Mode and batch variation index
         val effectiveSeed = when (currentFaceMode) {
@@ -189,34 +205,42 @@ fun HomeScreen(
           safetyTolerance = prefsManager.safetyTolerance
         )
 
-        val newUrl = imageService.generateImageUrl(
+        val result = imageService.generateHumanImage(
           finalPrompt = finalFusedPrompt,
-          seed = effectiveSeed,
           aspectRatio = currentFilters.aspectRatio,
-          modelName = prefsManager.aiModel,
-          safetyTolerance = prefsManager.safetyTolerance,
+          apiKey = apiKey,
           safetySetting = prefsManager.imagenSafetySetting
         )
 
-        generatedUrls.add(newUrl)
-        if (i == 1) {
-          currentImageUrl = newUrl
+        result.onSuccess { bmp ->
+          generatedBitmaps.add(bmp)
+          if (i == 1) {
+            loadedBitmap = bmp
+          }
+        }.onFailure { err ->
+          val msg = err.message ?: "Unknown error"
+          withContext(Dispatchers.Main) {
+            if (msg.contains("API_KEY_INVALID", ignoreCase = true) || msg.contains("not valid", ignoreCase = true)) {
+              Toast.makeText(context, "Google API Key தவறானது! Settings-ல் சரியான கீ உள்ளிடவும்.", Toast.LENGTH_LONG).show()
+              showApiKeyDialog = true
+            } else if (msg.contains("RESOURCE_EXHAUSTED", ignoreCase = true) || msg.contains("429", ignoreCase = true)) {
+              Toast.makeText(context, "Google API Quota முடிந்தது. சிறிது நேரம் கழித்து மீண்டும் முயற்சிக்கவும்.", Toast.LENGTH_LONG).show()
+            } else {
+              Toast.makeText(context, "பிழை: $msg", Toast.LENGTH_LONG).show()
+            }
+          }
         }
       }
 
-      batchImages = generatedUrls
-      selectedBatchIndex = 0
-      currentImageUrl = generatedUrls.first()
-      val bitmap = imageService.downloadBitmap(currentImageUrl)
-      loadedBitmap = bitmap
+      batchBitmaps = generatedBitmaps
+      if (generatedBitmaps.isNotEmpty()) {
+        selectedBatchIndex = 0
+        loadedBitmap = generatedBitmaps.first()
+        val msg = if (total > 1) "$total மாறுபட்ட படங்கள் வெற்றிகரமாக உருவாக்கப்பட்டன (Zero Watermark)!" else "படம் தயாரானது (Zero Watermark)!"
+        Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
+      }
       isGenerating = false
       batchProgress = ""
-      if (bitmap != null) {
-        val msg = if (total > 1) "$total மாறுபட்ட படங்கள் வெற்றிகரமாக உருவாக்கப்பட்டன (Batch Complete)!" else "படம் தயாரானது (Generation Complete)!"
-        Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
-      } else {
-        Toast.makeText(context, "படம் உருவாக்குவதில் பிழை ஏற்பட்டது. தயவுசெய்து இணைய இணைப்பைச் சரிபார்த்து மீண்டும் முயற்சிக்கவும்.", Toast.LENGTH_LONG).show()
-      }
     }
   }
 
@@ -245,7 +269,7 @@ fun HomeScreen(
             color = GoldBright
           )
           Text(
-            text = "Realistic Human AI Studio • v1.1",
+            text = "Realistic Human AI Studio • v1.2",
             fontSize = 11.sp,
             fontFamily = PlayfairFontFamily,
             color = CyanBright
@@ -604,8 +628,9 @@ fun HomeScreen(
         }
       }
 
-      // Batch Results Carousel & Save All (shown when batchImages has multiple variations)
-      if (batchImages.size > 1) {
+      // Batch Results Carousel & Save All (shown when batchBitmaps or batchImages has multiple variations)
+      val effectiveCount = if (batchBitmaps.isNotEmpty()) batchBitmaps.size else batchImages.size
+      if (effectiveCount > 1) {
         Spacer(modifier = Modifier.height(14.dp))
         Column(
           modifier = Modifier
@@ -621,7 +646,7 @@ fun HomeScreen(
             verticalAlignment = Alignment.CenterVertically
           ) {
             Text(
-              text = "Batch Variations (${batchImages.size} படங்கள்):",
+              text = "Batch Variations ($effectiveCount படங்கள்):",
               fontSize = 13.sp,
               fontWeight = FontWeight.Bold,
               color = GoldBright
@@ -635,10 +660,15 @@ fun HomeScreen(
                 .clickable {
                   coroutineScope.launch {
                     var successCount = 0
-                    batchImages.forEachIndexed { idx, url ->
-                      val bmp = imageService.downloadBitmap(url)
-                      if (bmp != null) {
+                    if (batchBitmaps.isNotEmpty()) {
+                      batchBitmaps.forEachIndexed { idx, bmp ->
                         imageService.saveImageToGallery(bmp, "Batch_$idx")
+                        successCount++
+                      }
+                    } else {
+                      val bmp = loadedBitmap
+                      if (bmp != null) {
+                        imageService.saveImageToGallery(bmp, "Batch_0")
                         successCount++
                       }
                     }
@@ -662,7 +692,7 @@ fun HomeScreen(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(10.dp)
           ) {
-            batchImages.forEachIndexed { index, imgUrl ->
+            for (index in 0 until effectiveCount) {
               val isSelected = selectedBatchIndex == index
               Box(
                 modifier = Modifier
@@ -677,21 +707,30 @@ fun HomeScreen(
                   )
                   .clickable {
                     selectedBatchIndex = index
-                    currentImageUrl = imgUrl
-                    coroutineScope.launch {
-                      loadedBitmap = imageService.downloadBitmap(imgUrl)
+                    if (batchBitmaps.isNotEmpty() && index < batchBitmaps.size) {
+                      loadedBitmap = batchBitmaps[index]
                     }
                   }
               ) {
-                AsyncImage(
-                  model = ImageRequest.Builder(context)
-                    .data(imgUrl)
-                    .crossfade(true)
-                    .build(),
-                  contentDescription = "Variation $index",
-                  contentScale = ContentScale.Crop,
-                  modifier = Modifier.fillMaxSize()
-                )
+                if (batchBitmaps.isNotEmpty() && index < batchBitmaps.size) {
+                  Image(
+                    bitmap = batchBitmaps[index].asImageBitmap(),
+                    contentDescription = "Variation $index",
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize()
+                  )
+                } else if (index < batchImages.size) {
+                  AsyncImage(
+                    model = ImageRequest.Builder(context)
+                      .data(batchImages[index])
+                      .crossfade(true)
+                      .build(),
+                    contentDescription = "Variation $index",
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize()
+                  )
+                }
+
                 // Number Badge
                 Box(
                   modifier = Modifier
@@ -816,5 +855,85 @@ fun HomeScreen(
         }
       }
     )
+  }
+
+  // Google Imagen 3 API Key Required Dialog
+  if (showApiKeyDialog) {
+    Dialog(onDismissRequest = { showApiKeyDialog = false }) {
+      Box(
+        modifier = Modifier
+          .fillMaxWidth()
+          .clip(RoundedCornerShape(20.dp))
+          .background(CardBg)
+          .border(1.5.dp, GoldPrimary, RoundedCornerShape(20.dp))
+          .padding(20.dp)
+      ) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+          Box(
+            modifier = Modifier
+              .size(54.dp)
+              .clip(CircleShape)
+              .background(GoldPrimary.copy(alpha = 0.15f))
+              .border(1.5.dp, GoldBright, CircleShape),
+            contentAlignment = Alignment.Center
+          ) {
+            Icon(
+              imageVector = Icons.Default.Security,
+              contentDescription = null,
+              tint = GoldBright,
+              modifier = Modifier.size(28.dp)
+            )
+          }
+
+          Spacer(modifier = Modifier.height(14.dp))
+
+          Text(
+            text = "Google Imagen 3 API Key தேவை",
+            fontSize = 17.sp,
+            fontWeight = FontWeight.Bold,
+            color = GoldBright
+          )
+
+          Spacer(modifier = Modifier.height(8.dp))
+
+          Text(
+            text = "எந்தவொரு வாட்டர்மார்க்கோ அல்லது தேவையற்ற லோகோவோ இல்லாமல் அசல் 8K தத்ரூப மனிதப் படங்களை உருவாக்க உங்கள் இலவச Google AI Studio API Key தேவைப்படுகிறது.\n\nSettings பக்கத்தில் உங்கள் API Key-யை உள்ளிட்டதும் படங்கள் தயாராகும்.",
+            fontSize = 13.sp,
+            color = TextSecondary,
+            textAlign = TextAlign.Center,
+            lineHeight = 18.sp
+          )
+
+          Spacer(modifier = Modifier.height(20.dp))
+
+          Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
+          ) {
+            OutlinedButton(
+              onClick = { showApiKeyDialog = false },
+              modifier = Modifier.weight(1f),
+              colors = ButtonDefaults.outlinedButtonColors(contentColor = TextSecondary)
+            ) {
+              Text("ரத்து", fontSize = 13.sp)
+            }
+
+            Button(
+              onClick = {
+                showApiKeyDialog = false
+                onNavigateToSettings()
+              },
+              modifier = Modifier.weight(1.3f),
+              colors = ButtonDefaults.buttonColors(
+                containerColor = GoldPrimary,
+                contentColor = TextOnGold
+              )
+            ) {
+              Text("Settings-க்குச் செல்", fontSize = 13.sp, fontWeight = FontWeight.Bold)
+            }
+          }
+        }
+      }
+    }
   }
 }

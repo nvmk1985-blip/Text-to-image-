@@ -571,9 +571,131 @@ fun SettingsScreen(
         }
       }
 
+      // Section 4: Google Imagen 3 API Key (Zero Watermark)
+      var apiKeyInput by remember { mutableStateOf(prefsManager.googleApiKey) }
+
+      Box(
+        modifier = Modifier
+          .fillMaxWidth()
+          .clip(RoundedCornerShape(16.dp))
+          .background(CardBg)
+          .border(
+            width = 1.5.dp,
+            brush = Brush.horizontalGradient(listOf(GoldPrimary, CyanBright)),
+            shape = RoundedCornerShape(16.dp)
+          )
+          .padding(16.dp)
+      ) {
+        Column {
+          Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+          ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+              Icon(
+                imageVector = Icons.Default.Security,
+                contentDescription = null,
+                tint = GoldBright,
+                modifier = Modifier.size(20.dp)
+              )
+              Spacer(modifier = Modifier.width(8.dp))
+              Text(
+                text = "Google Imagen 3 API Key",
+                fontSize = 15.sp,
+                fontWeight = FontWeight.Bold,
+                color = GoldBright
+              )
+            }
+
+            // Status chip
+            Box(
+              modifier = Modifier
+                .clip(RoundedCornerShape(6.dp))
+                .background(if (prefsManager.googleApiKey.isNotBlank()) StatusSuccess.copy(alpha = 0.2f) else CardElevated)
+                .border(
+                  1.dp,
+                  if (prefsManager.googleApiKey.isNotBlank()) StatusSuccess else TextMuted,
+                  RoundedCornerShape(6.dp)
+                )
+                .padding(horizontal = 8.dp, vertical = 2.dp)
+            ) {
+              Text(
+                text = if (prefsManager.googleApiKey.isNotBlank()) "Key சேர்க்கப்பட்டுள்ளது ✓" else "Key இல்லை",
+                fontSize = 10.sp,
+                color = if (prefsManager.googleApiKey.isNotBlank()) StatusSuccess else TextMuted,
+                fontWeight = FontWeight.Bold
+              )
+            }
+          }
+
+          Spacer(modifier = Modifier.height(8.dp))
+
+          Text(
+            text = "Google AI Studio-வில் (aistudio.google.com/apikey) கிடைக்கும் உங்களின் இலவச API Key-யை கீழே உள்ளிட்டு சேமிக்கவும். இதன் மூலம் எந்தவொரு வாட்டர்மார்க்கும் லோகோவும் இல்லாத அசல் 8K தத்ரூப மனிதப் படங்கள் உருவாகும்.",
+            fontSize = 11.sp,
+            color = TextSecondary,
+            lineHeight = 16.sp
+          )
+
+          Spacer(modifier = Modifier.height(12.dp))
+
+          OutlinedTextField(
+            value = apiKeyInput,
+            onValueChange = { apiKeyInput = it },
+            modifier = Modifier.fillMaxWidth(),
+            placeholder = { Text("AIzaSy... (Google API Key-யை இங்கு Paste செய்யவும்)", fontSize = 12.sp, color = TextMuted) },
+            singleLine = true,
+            colors = OutlinedTextFieldDefaults.colors(
+              focusedBorderColor = CyanBright,
+              unfocusedBorderColor = GlassCyanBorder,
+              focusedTextColor = TextPrimary,
+              unfocusedTextColor = TextPrimary
+            )
+          )
+
+          Spacer(modifier = Modifier.height(10.dp))
+
+          Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+          ) {
+            if (apiKeyInput.isNotBlank()) {
+              OutlinedButton(
+                onClick = {
+                  apiKeyInput = ""
+                  prefsManager.googleApiKey = ""
+                  Toast.makeText(context, "API Key நீக்கப்பட்டது", Toast.LENGTH_SHORT).show()
+                },
+                modifier = Modifier.weight(1f),
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = TextSecondary)
+              ) {
+                Text("அழி (Clear)", fontSize = 12.sp)
+              }
+            }
+
+            Button(
+              onClick = {
+                prefsManager.googleApiKey = apiKeyInput
+                Toast.makeText(context, "Google Imagen 3 API Key சேமிக்கப்பட்டது!", Toast.LENGTH_SHORT).show()
+              },
+              modifier = Modifier.weight(1.5f),
+              colors = ButtonDefaults.buttonColors(
+                containerColor = GoldPrimary,
+                contentColor = TextOnGold
+              )
+            ) {
+              Icon(Icons.Default.Save, contentDescription = null, modifier = Modifier.size(16.dp), tint = TextOnGold)
+              Spacer(modifier = Modifier.width(6.dp))
+              Text("Save API Key", fontWeight = FontWeight.Bold, fontSize = 12.sp)
+            }
+          }
+        }
+      }
+
       Spacer(modifier = Modifier.height(20.dp))
 
-      // Section 4: AI Engine Selection (Low Moderation)
+      // Section 5: AI Engine Selection (Low Moderation)
       Box(
         modifier = Modifier
           .fillMaxWidth()

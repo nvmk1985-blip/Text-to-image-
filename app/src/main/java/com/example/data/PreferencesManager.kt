@@ -14,12 +14,17 @@ class PreferencesManager(context: Context) {
     private const val KEY_LAST_SEED = "key_last_seed"
     private const val KEY_IS_FACE_LOCKED = "key_is_face_locked"
     private const val KEY_LOCKED_FACE_PROMPT = "key_locked_face_prompt"
+    private const val KEY_GOOGLE_API_KEY = "key_google_api_key"
 
     // Default control prompt demonstrating user's specific example
     const val DEFAULT_CONTROL_PROMPT = "மனிதனை மரமாக நினைத்துக்கொள். இயற்கை கூறுகள் மற்றும் மனித உடலின் தத்ரூபமான இணைவு. Perfect human anatomy, flawless facial symmetry, strictly two arms and two legs, exactly 5 fingers per hand, natural aligned mouth and teeth."
 
     const val DEFAULT_NEGATIVE_PROMPT = "crooked mouth, distorted jaw, unnatural teeth, extra limbs, 3 arms, 4 arms, multiple legs, extra fingers, missing fingers, mutated hands, bad anatomy, deformed face, fused fingers, disfigured proportions, blurry artifacts, plastic doll look"
   }
+
+  var googleApiKey: String
+    get() = prefs.getString(KEY_GOOGLE_API_KEY, "") ?: ""
+    set(value) = prefs.edit().putString(KEY_GOOGLE_API_KEY, value.trim()).apply()
 
   var controlPrompt: String
     get() = prefs.getString(KEY_CONTROL_PROMPT, DEFAULT_CONTROL_PROMPT) ?: DEFAULT_CONTROL_PROMPT

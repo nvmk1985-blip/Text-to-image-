@@ -18,11 +18,11 @@ enum class FaceMode(val titleTamil: String, val titleEnglish: String, val descri
   )
 }
 
-enum class AspectRatioOption(val label: String, val width: Int, val height: Int) {
-  PORTRAIT_STATUS("9:16 (Status / Story)", 720, 1280),
-  SQUARE("1:1 (Square Post)", 1024, 1024),
-  LANDSCAPE("16:9 (Landscape)", 1280, 720),
-  PORTRAIT_4_5("4:5 (Portrait)", 864, 1080)
+enum class AspectRatioOption(val label: String, val width: Int, val height: Int, val apiRatio: String) {
+  PORTRAIT_STATUS("9:16 (Status / Story)", 720, 1280, "9:16"),
+  SQUARE("1:1 (Square Post)", 1024, 1024, "1:1"),
+  LANDSCAPE("16:9 (Landscape)", 1280, 720, "16:9"),
+  PORTRAIT_4_5("4:5 (Portrait)", 864, 1080, "3:4")
 }
 
 data class PresetFilters(
